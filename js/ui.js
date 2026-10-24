@@ -119,7 +119,7 @@ const UI = {
     $('cdetail').innerHTML = locked ? `<div><h3 style="color:#ff8aa0">Class Ẩn</h3><p>${c.unlockHint}</p></div><div><p>Một bóng hình ẩn trong bóng tối của hầm ngục. Chỉ những ai đã chiến thắng Quỷ Vương Hỏa Ngục mới có thể triệu hồi class này.</p></div>` : `
       <div><h3 style="color:${c.color}">${c.name}</h3><p>${c.desc}</p>
         <div class="skillpreview">${c.skills.map(s => `<span class="chip">${SKILLS[s].passive ? '◇ ' : '◆ '}${SKILLS[s].name}</span>`).join('')}</div>
-        <p style="margin-top:10px;font-size:13px">Thuộc tính chính: <b style="color:var(--gold)">${ATTR_INFO[c.main].name}</b> · Vũ khí: <b>${WEAPON_TYPES[CLASS_WEAPON[k]].name}</b></p></div>
+        <p style="margin-top:10px">Thuộc tính chính: <b style="color:var(--gold)">${ATTR_INFO[c.main].name}</b> · Vũ khí: <b>${WEAPON_TYPES[CLASS_WEAPON[k]].name}</b></p></div>
       <div>${bars.map(([n, v]) => `<div class="sbar"><span>${n}</span><b><i style="width:${Math.round(clamp(v, 0.05, 1) * 100)}%;background:${c.color}"></i></b></div>`).join('')}</div>`;
     $('btn-create').disabled = locked;
   },
@@ -263,7 +263,7 @@ const UI = {
   },
   skillTip(sk) {
     const d = SKILLS[sk], L = P.ch.skills[sk] || 0;
-    return `<div class="icard"><div class="iname">${d.name} <span class="pips">${pips(L)}</span></div><div class="itype">${d.passive ? 'Bị động' : `MP ${d.mp} · Hồi ${d.cd}s`}</div><div style="font-size:14px">${d.desc(Math.max(1, L))}</div>${L === 0 ? `<div class="down" style="font-size:13px">Chưa học · cần cấp ${d.req}</div>` : ''}</div>`;
+    return `<div class="icard"><div class="iname">${d.name} <span class="pips">${pips(L)}</span></div><div class="itype">${d.passive ? 'Bị động' : `MP ${d.mp} · Hồi ${d.cd}s`}</div><div class="sd">${d.desc(Math.max(1, L))}</div>${L === 0 ? `<div class="down" style="font-size:20px">Chưa học · cần cấp ${d.req}</div>` : ''}</div>`;
   },
   refreshSkillbar() {
     if (!P) return;
@@ -387,8 +387,8 @@ const UI = {
   },
   panelHeadExtra(n) {
     if (n === 'shop') return `<div class="tabs"><button class="btn small ${this.tab === 'buy' ? 'on' : ''}" data-tab="buy">Mua</button><button class="btn small ${this.tab === 'sell' ? 'on' : ''}" data-tab="sell">Bán</button></div>`;
-    if (n === 'skills') return `<span class="num" style="color:var(--gold);font-size:13px">Điểm: ${P.ch.skillPts}</span>`;
-    if (n === 'char') return `<span class="num" style="color:var(--gold);font-size:13px">Điểm: ${P.ch.freeAttr}</span>`;
+    if (n === 'skills') return `<span class="num" style="color:var(--gold);font-size:20px">Điểm: ${P.ch.skillPts}</span>`;
+    if (n === 'char') return `<span class="num" style="color:var(--gold);font-size:20px">Điểm: ${P.ch.freeAttr}</span>`;
     return '';
   },
 
@@ -533,9 +533,9 @@ const UI = {
     const t = Math.floor(ch.playTime / 60);
     return `<div class="charcols"><div>
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px"><canvas id="charcv" width="64" height="64" style="width:96px;height:96px;image-rendering:pixelated"></canvas>
-      <div><div style="font-size:22px;font-weight:800">${esc(ch.name)}</div><div style="color:${c.color};font-weight:700">${c.name}</div><div class="hint" style="text-align:left">Cấp ${ch.lvl} · XP ${fmt(ch.xp)} / ${fmt(xpNeed(ch.lvl))}</div></div></div>
+      <div><div style="font-size:30px">${esc(ch.name)}</div><div style="color:${c.color};font-weight:700">${c.name}</div><div class="hint" style="text-align:left">Cấp ${ch.lvl} · XP ${fmt(ch.xp)} / ${fmt(xpNeed(ch.lvl))}</div></div></div>
       <div class="sec-title">Thuộc tính (còn ${ch.freeAttr} điểm)</div>
-      <div style="display:flex;flex-direction:column;gap:6px">${attrs.map(a => `<div class="attrrow"><div><div class="an">${ATTR_INFO[a].name}${c.main === a ? ' <span style="color:var(--gold);font-size:11px">· CHÍNH</span>' : ''}</div><div class="ad">${ATTR_INFO[a].desc}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px">${attrs.map(a => `<div class="attrrow"><div><div class="an">${ATTR_INFO[a].name}${c.main === a ? ' <span style="color:var(--gold);font-size:10px">· CHÍNH</span>' : ''}</div><div class="ad">${ATTR_INFO[a].desc}</div></div>
         <div class="av">${st.attrs[a]}</div><button class="btn small ${ch.freeAttr ? 'gold' : ''}" data-attr="${a}" ${ch.freeAttr ? '' : 'disabled'} aria-label="Cộng ${ATTR_INFO[a].name}">+</button></div>`).join('')}</div>
       ${ch.freeAttr >= 5 ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${attrs.map(a => `<button class="btn small" data-attr5="${a}">+5 ${ATTR_INFO[a].short}</button>`).join('')}</div>` : ''}
       </div><div>
@@ -789,8 +789,8 @@ function itemCardHTML(it, cmp) {
     <div class="iname" style="color:${R.color}">${esc(itemDisplayName(it))}</div>
     <div class="itype">${R.name} · ${typ} · Cấp đồ ${it.ilvl}</div>
     ${baseLines}${affLines}
-    ${it.legend ? '<div style="color:#ff9c2a;font-size:13px;font-style:italic">Huyền thoại kể rằng món đồ này từng thuộc về một vị anh hùng đã khuất.</div>' : ''}
-    ${P && !canEquip(P.ch, it) ? '<div class="down" style="font-size:13px">Class của bạn không dùng được</div>' : ''}
+    ${it.legend ? '<div style="color:#ff9c2a;font-size:20px;font-style:italic">Huyền thoại kể rằng món đồ này từng thuộc về một vị anh hùng đã khuất.</div>' : ''}
+    ${P && !canEquip(P.ch, it) ? '<div class="down" style="font-size:20px">Class của bạn không dùng được</div>' : ''}
     ${cmpHTML}
     <div class="hint" style="text-align:left">Giá bán ${fmt(sellValue(it))} vàng</div></div>`;
 }
@@ -867,7 +867,7 @@ function migrateChar(ch) {
   initInput();
   UI.init();
   requestAnimationFrame(loop);
-  await Promise.all([loadAssets(p => { $('loadfill').style.width = Math.round(p * 100) + '%'; }), Look.init()]);
+  await Promise.all([loadAssets(p => { $('loadfill').style.width = Math.round(p * 100) + '%'; }), Look.init(), document.fonts ? document.fonts.load('10px "MW Pixel"').catch(() => { }) : null]);
   // animate hero trên màn hình tạo nhân vật
   setInterval(() => {
     UI.lookFrame();

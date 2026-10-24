@@ -1255,6 +1255,15 @@ function drawFrame(img, sx, sy, sw, sh, dx, dy, dw, dh, o = {}) {
   } else cx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
   cx.restore();
 }
+// chữ pixel có viền (font MW Pixel: 1 điểm ảnh = size/10)
+function pxText(txt, x, y, size, color, ink = '#1b1a2c') {
+  const cx = G.cx, u = size / 10;
+  cx.font = `${size}px "MW Pixel", "Alegreya Sans", sans-serif`;
+  cx.textAlign = 'center'; cx.textBaseline = 'alphabetic';
+  cx.fillStyle = ink;
+  for (const [dx, dy] of [[u, 0], [-u, 0], [0, u], [0, -u], [u, u], [-u, u], [u, -u], [-u, -u], [0, 2 * u]]) cx.fillText(txt, x + dx, y + dy);
+  cx.fillStyle = color; cx.fillText(txt, x, y);
+}
 function shadow(x, y, rw, rh, a = 0.35) {
   const cx = G.cx;
   cx.fillStyle = `rgba(0,0,0,${a})`;
@@ -1349,7 +1358,7 @@ function drawMonster(m) {
     const w = Math.max(22, m.r * 2.2), y = m.y - F.foot * s - 6 + bob;
     cx.fillStyle = 'rgba(0,0,0,0.6)'; cx.fillRect(m.x - w / 2 - 1, y - 1, w + 2, 5);
     cx.fillStyle = m.elite ? '#ffb43a' : '#e04545'; cx.fillRect(m.x - w / 2, y, w * Math.max(0, m.hp / m.maxHp), 3);
-    if (m.elite) { cx.font = 'bold 7px Bungee, "Alegreya Sans", sans-serif'; cx.textAlign = 'center'; cx.fillStyle = '#000'; cx.fillText(m.name, m.x + 0.5, y - 3.5); cx.fillStyle = '#ffcf5a'; cx.fillText(m.name, m.x, y - 4); }
+    if (m.elite) pxText(m.name, m.x, y - 4, 10, '#ffcf5a');
   }
 }
 function drawNPC(n) {
@@ -1358,11 +1367,8 @@ function drawNPC(n) {
   const bob = Math.floor(G.t * 1.5 + n.x) % 2;
   drawFrame(IMG[S.img], 0, S.rows[n.dir] * 64, 64, 64, Math.round(n.x - 32), Math.round(n.y - 61 - bob * 0.5), 64, 64);
   const cx = G.cx;
-  cx.font = '8px Bungee, "Alegreya Sans", sans-serif'; cx.textAlign = 'center';
-  cx.fillStyle = '#000'; cx.fillText(n.name, n.x + 0.5, n.y - 62.5);
-  cx.fillStyle = '#ffe9a8'; cx.fillText(n.name, n.x, n.y - 63);
-  // dấu ! nhấp nháy
-  cx.fillStyle = '#ffd23a'; cx.font = '10px Bungee, "Alegreya Sans", sans-serif'; cx.fillText('!', n.x, n.y - 74 + Math.sin(G.t * 4) * 2);
+  pxText(n.name, n.x, n.y - 63, 10, '#ffe9a8');
+  pxText('!', n.x, n.y - 76 + Math.sin(G.t * 4) * 2, 20, '#ffd23a');
 }
 function drawDeco(d) {
   const img = IMG['deco_' + d.kind];
@@ -1390,11 +1396,7 @@ function drawDrop(d) {
     const img = iconImg(itemIcon(it), col);
     if (img) cx.drawImage(img, d.x - 10, y - 18, 20, 20);
     if (Math.hypot(P.x - d.x, P.y - d.y) < 110) {
-      cx.font = '7px Bungee, "Alegreya Sans", sans-serif'; cx.textAlign = 'center';
-      const name = it.name;
-      const w = cx.measureText(name).width + 6;
-      cx.fillStyle = 'rgba(0,0,0,0.7)'; cx.fillRect(d.x - w / 2, y - 31, w, 10);
-      cx.fillStyle = col; cx.fillText(name, d.x, y - 23);
+      pxText(it.name, d.x, y - 24, 10, col);
     }
   }
 }
@@ -1552,9 +1554,7 @@ function render() {
   for (const t of G.texts) {
     const a = Math.min(1, t.life / t.max * 2);
     cx.globalAlpha = a;
-    cx.font = `${t.size}px Bungee, "Alegreya Sans", sans-serif`;
-    cx.fillStyle = '#000'; cx.fillText(t.txt, t.x + 1, t.y + 1);
-    cx.fillStyle = t.color; cx.fillText(t.txt, t.x, t.y);
+    pxText(t.txt, t.x, t.y, t.size >= 12 ? 20 : 10, t.color);
   }
   cx.globalAlpha = 1;
   // cổng dịch chuyển
