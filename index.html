@@ -275,6 +275,50 @@ kbd { font-family: var(--f-num); font-size: 10px; border: 1px solid var(--bronze
   .logo small { letter-spacing: .25em; }
   #hudframe .bt { font-size: 7px; }
 }
+/* ---------- Golden UI (bộ khung vàng của Michele "Buch" Bucelli, CC-BY-SA) ---------- */
+html { cursor: url(assets/ui/cur2.png) 2 2, auto; }
+button, select, .slot, .ccard, .charrow, .sitem, #prompt, a, label[for] { cursor: url(assets/ui/cur.png) 8 2, pointer; }
+.btn, .panel, .slot, .mbtn, .gframe, #skillbar, #mmwrap img { image-rendering: pixelated; }
+.btn { border-style: solid; border-width: 8px; border-color: transparent; border-image: url(assets/ui/btn.png) 8 fill / 8px stretch; background: none; box-shadow: none; border-radius: 0; padding: 2px 10px; color: #fbeed3; text-shadow: 0 1px 0 #3a1a0a; }
+.btn:hover { border-image-source: url(assets/ui/btn_h.png); color: #fff; }
+.btn:active { transform: translateY(1px); }
+.btn.gold { border-image-source: url(assets/ui/btn_gold.png); color: #2b1503; text-shadow: 0 1px 0 rgba(255,236,170,.55); }
+.btn.gold:hover { border-image-source: url(assets/ui/btn_gold_h.png); color: #000; }
+.btn.danger { color: #ffc2b8; }
+.btn.small { padding: 0 6px; font-size: 13px; }
+.btn.on, .tabs .btn.on, .look-ctl .btn.on { border-image-source: url(assets/ui/btn_gold.png); color: #2b1503; text-shadow: none; }
+.btn:disabled { opacity: 1; filter: grayscale(.85) brightness(.7); }
+.panel { border: 20px solid transparent; border-image: url(assets/ui/panel.png) 10 fill / 20px stretch; background: none; border-radius: 0; box-shadow: 0 24px 60px rgba(0,0,0,.75); }
+.phead { background: none; border-radius: 0; border-bottom: 2px solid #5a4024; padding: 0 2px 10px; }
+.pbody { padding: 12px 2px 2px; }
+.phead .x { width: 46px; height: 48px; border: 0; border-image: none; padding: 0; font-size: 0; background: url(assets/ui/close.png) center / contain no-repeat; image-rendering: pixelated; }
+.phead .x:hover { background-image: url(assets/ui/close_h.png); }
+.gframe, .charrow, .ccard, .cdetail, .look-prev, .look-opts, #locbox, #wallet, .icard, .sitem, .skrow, .attrrow, #notice, #toast, .empty, .paper, #skillbar, #prompt, #bossbar .bb {
+  border: 10px solid transparent; border-image: url(assets/ui/panel.png) 10 fill / 10px stretch; background: none; border-radius: 0; box-shadow: none; }
+.charrow:hover, .sitem:hover { filter: brightness(1.12); }
+.ccard.sel, .sitem.sel { box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(240,195,90,.35); }
+#prompt { color: var(--gold); }
+#bossbar .bb { height: 34px; position: relative; }
+#bossbar .bb i, #bossbar .bb em { inset: 0 auto 0 0; }
+.slot { box-sizing: border-box; border: 8px solid transparent; border-image: url(assets/ui/slot.png) 8 fill / 8px stretch; background: none; border-radius: 0; }
+.slot:hover, .slot.sel { border-image-source: url(assets/ui/slot_light.png); outline: none; }
+.slot.r0, .slot.r1, .slot.r2, .slot.r3, .slot.r4 { border-color: transparent; box-shadow: none; }
+.slot.r1::after, .slot.r2::after, .slot.r3::after, .slot.r4::after { content: ""; position: absolute; inset: -4px; border: 2px solid; pointer-events: none; }
+.slot.r1::after { border-color: #4fbf4f; } .slot.r2::after { border-color: #4a92ea; } .slot.r3::after { border-color: #b860f5; box-shadow: inset 0 0 8px rgba(196,107,255,.6); } .slot.r4::after { border-color: #ff9c2a; box-shadow: inset 0 0 10px rgba(255,156,42,.7); }
+.slot.bad::after { content: none; }
+.slot.bad::before { content: ""; position: absolute; inset: -4px; background: rgba(170,30,30,.35); pointer-events: none; }
+.slot .lblic { width: 28px; height: auto; max-height: 28px; opacity: .55; image-rendering: pixelated; }
+.paper .slot .lbl { bottom: -6px; }
+.mbtn { box-sizing: border-box; border: 8px solid transparent; border-image: url(assets/ui/btn.png) 8 fill / 8px stretch; background: none; border-radius: 0; }
+.mbtn:hover { border-image-source: url(assets/ui/btn_h.png); }
+#skillbar { padding: 2px; }
+#mmwrap { position: relative; width: 128px; height: 128px; }
+#mmwrap img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#minimap { position: absolute; left: 13.28%; top: 13.28%; width: 72.66%; height: 72.66%; border: 0; border-radius: 50%; }
+.lrow select, .namerow input, #cname { border: 8px solid transparent; border-image: url(assets/ui/slot.png) 8 fill / 8px stretch; background: none; border-radius: 0; color: var(--text); padding: 2px 6px; image-rendering: pixelated; }
+.lrow select option { background: #1b1520; }
+.vol { display: grid; grid-template-columns: 110px 1fr 44px; gap: 10px; align-items: center; }
+.vol input { accent-color: var(--gold); width: 100%; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -295,6 +339,7 @@ kbd { font-family: var(--f-num); font-size: 10px; border: 1px solid var(--bronze
     <div class="title-actions">
       <button class="btn gold" id="btn-new">Tạo nhân vật mới</button>
       <button class="btn" id="btn-help">Hướng dẫn</button>
+      <button class="btn" id="btn-music" aria-label="Bật/tắt nhạc nền">♪ Nhạc: Bật</button>
     </div>
     <div id="cloudbox" class="hidden"></div>
     <div class="hint">Dữ liệu lưu trong trình duyệt (và đám mây nếu đăng nhập). Tối đa 6 nhân vật.</div>
@@ -344,7 +389,7 @@ kbd { font-family: var(--f-num); font-size: 10px; border: 1px solid var(--bronze
   <div id="topright">
     <div id="locbox"><div class="fl" id="locfloor">Thị trấn</div><div class="bm" id="locname"></div></div>
     <div id="wallet"><span><img id="ic-gold" alt=""><b id="w-gold">0</b></span><span><img id="ic-stone" alt=""><b id="w-stone">0</b></span></div>
-    <canvas id="minimap" width="180" height="135"></canvas>
+    <div id="mmwrap"><canvas id="minimap" width="186" height="186"></canvas><img src="assets/ui/ring.png" alt=""></div>
   </div>
   <div id="bossbar" class="hidden"><div class="bn" id="bossname"></div><div class="bb"><em id="bosslag"></em><i id="bosshp"></i></div></div>
   <div id="log"></div>

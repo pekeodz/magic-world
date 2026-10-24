@@ -17,10 +17,54 @@ let P = null; // người chơi runtime
 
 // ---------- Âm thanh tổng hợp ----------
 let AC = null;
+// ---------- Cài đặt âm thanh (lưu trên máy) ----------
+const Settings = { music: 0.45, sfx: 0.8 };
+try { Object.assign(Settings, JSON.parse(localStorage.getItem('mw_settings') || '{}')); } catch (e) { }
+function saveSettings() { try { localStorage.setItem('mw_settings', JSON.stringify(Settings)); } catch (e) { } }
+function ensureAC() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume().catch(() => { });
+  return AC;
+}
+// ---------- Nhạc nền ----------
+const Music = {
+  el: null, filter: null, started: false, mood: 'town', wired: false,
+  init() {
+    this.el = new Audio('assets/audio/bgm_town.mp3');
+    this.el.loop = true; this.el.preload = 'auto';
+    this.apply();
+    const kick = () => this.start();
+    addEventListener('pointerdown', kick, { once: true });
+    addEventListener('keydown', kick, { once: true });
+  },
+  start() {
+    if (!this.el) return;
+    try {
+      ensureAC();
+      if (!this.wired) {
+        const src = AC.createMediaElementSource(this.el);
+        this.filter = AC.createBiquadFilter(); this.filter.type = 'lowpass'; this.filter.frequency.value = 20000;
+        src.connect(this.filter); this.filter.connect(AC.destination); this.wired = true;
+      }
+    } catch (e) { /* trình duyệt không hỗ trợ lọc: phát bình thường */ }
+    this.apply();
+    if (this.vol() > 0) this.el.play().then(() => { this.started = true; }).catch(() => { });
+  },
+  vol() { return G.muted ? 0 : Settings.music; },
+  apply() {
+    if (!this.el) return;
+    const k = { town: 1, dungeon: 0.75, boss: 1 }[this.mood] || 1;
+    this.el.volume = clamp(this.vol() * k, 0, 1);
+    if (this.filter && AC) this.filter.frequency.setTargetAtTime({ town: 20000, dungeon: 1300, boss: 6000 }[this.mood] || 20000, AC.currentTime, 0.6);
+    if (this.vol() > 0 && this.el.paused && this.started) this.el.play().catch(() => { });
+    if (this.vol() === 0 && !this.el.paused) this.el.pause();
+  },
+  setMood(m) { this.mood = m; this.apply(); },
+};
 function sfx(type) {
-  if (G.muted) return;
+  if (G.muted || Settings.sfx <= 0) return;
   try {
-    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    ensureAC();
     const t0 = AC.currentTime;
     const o = AC.createOscillator(), g = AC.createGain();
     o.connect(g); g.connect(AC.destination);
@@ -34,7 +78,7 @@ function sfx(type) {
     o.type = S[3];
     o.frequency.setValueAtTime(S[0], t0);
     o.frequency.exponentialRampToValueAtTime(Math.max(20, S[1]), t0 + S[2]);
-    g.gain.setValueAtTime(S[4], t0);
+    g.gain.setValueAtTime(S[4] * Settings.sfx, t0);
     g.gain.exponentialRampToValueAtTime(0.001, t0 + S[2] + 0.05);
     o.start(t0); o.stop(t0 + S[2] + 0.06);
   } catch (e) { /* bỏ qua */ }
@@ -78,7 +122,7 @@ function initInput() {
     if (k === 'i' || k === 'b') UI.togglePanel('inv');
     if (k === 'k') UI.togglePanel('skills');
     if (k === 'c') UI.togglePanel('char');
-    if (k === 'm') { G.muted = !G.muted; UI.toast(G.muted ? 'Đã tắt âm thanh' : 'Đã bật âm thanh'); }
+    if (k === 'm') { G.muted = !G.muted; Music.apply(); if (!G.muted) Music.start(); UI.toast(G.muted ? 'Đã tắt nhạc & âm thanh' : 'Đã bật nhạc & âm thanh'); }
     if (k === 'escape') UI.escape();
     if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
   });
@@ -134,6 +178,7 @@ function enterTown() {
   G.explored = null;
   refreshShop();
   UI.setLocation(G.world.biome.name, null);
+  Music.setMood('town');
   UI.showBanner('Thị Trấn Khởi Nguyên', 'An toàn · Hồi phục toàn bộ');
   saveGame();
 }
@@ -149,6 +194,7 @@ function enterFloor(floor) {
   G.flowT = 0;
   populate(w, floor);
   UI.setLocation(w.biome.name, floor);
+  Music.setMood('dungeon');
   UI.showBanner(`Tầng ${floor}`, w.boss ? `⚠ Hang Ổ Boss — ${BOSSES[bossOf(floor)].name}` : w.biome.name);
   sfx('door');
   saveGame();
@@ -625,7 +671,7 @@ function killMonster(m) {
   floatText(m.x, m.y - 50, `+${fmt(m.xp)} XP`, '#b48cff', 9, 1.1);
   dropLoot(m);
   if (m.boss) {
-    G.bossRef = null; UI.bossBar(null);
+    G.bossRef = null; UI.bossBar(null); Music.setMood('dungeon');
     P.ch.bossKills++;
     G.shake = 14;
     G.door = { x: m.home.x, y: m.home.y + 40, open: true };
@@ -976,7 +1022,7 @@ function warn(z) { z.kind = 'warn'; z.max = z.t; G.zones.push(z); }
 function bossAI(m, dt, sp) {
   const d = dist(m, P);
   if (!m.aggro) {
-    if (d < 300) { m.aggro = true; UI.bossBar(m); UI.showBanner(m.name, 'BOSS'); sfx('boom'); G.shake = 6; }
+    if (d < 300) { m.aggro = true; Music.setMood('boss'); UI.bossBar(m); UI.showBanner(m.name, 'BOSS'); sfx('boom'); G.shake = 6; }
     else return;
   }
   const enr = m.hp < m.maxHp * 0.5;
@@ -1549,31 +1595,28 @@ function drawLighting(camx, camy) {
 
 // ---------- Minimap ----------
 function drawMinimap(cv) {
-  if (!G.running || !G.world || G.world.town || !G.explored) { cv.style.display = 'none'; return; }
-  cv.style.display = 'block';
+  const wrap = cv.parentElement;
+  if (!G.running || !G.world || G.world.town || !G.explored) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
   const g = G.world.grid, mx = cv.getContext('2d');
-  const s = Math.min(cv.width / g.w, cv.height / g.h);
-  const ox = (cv.width - g.w * s) / 2, oy = (cv.height - g.h * s) / 2;
-  mx.clearRect(0, 0, cv.width, cv.height);
-  mx.fillStyle = 'rgba(10,8,16,0.75)'; mx.fillRect(0, 0, cv.width, cv.height);
-  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
-    if (!G.explored[x + y * g.w]) continue;
+  const s = 3, W = cv.width, H = cv.height;
+  const ox = W / 2 - P.x / TILE * s, oy = H / 2 - P.y / TILE * s;
+  mx.clearRect(0, 0, W, H);
+  mx.fillStyle = '#100c14'; mx.fillRect(0, 0, W, H);
+  const r = Math.ceil(W / s / 2) + 1, px = Math.floor(P.x / TILE), py = Math.floor(P.y / TILE);
+  for (let y = py - r; y <= py + r; y++) for (let x = px - r; x <= px + r; x++) {
+    if (x < 0 || y < 0 || x >= g.w || y >= g.h || !G.explored[x + y * g.w]) continue;
     const v = gget(g, x, y);
     if (!walkable(v)) continue;
-    mx.fillStyle = v === T_LAVA ? '#a8401c' : '#6f6a7a';
-    mx.fillRect(ox + x * s, oy + y * s, Math.ceil(s), Math.ceil(s));
+    mx.fillStyle = v === T_LAVA ? '#b4481c' : '#8a7f6a';
+    mx.fillRect(Math.floor(ox + x * s), Math.floor(oy + y * s), s, s);
   }
-  if (G.door) { const tx = Math.floor(G.door.x / TILE), ty = Math.floor(G.door.y / TILE); if (G.explored[tx + ty * g.w]) { mx.fillStyle = '#c47aff'; mx.fillRect(ox + tx * s - 2, oy + ty * s - 2, 5, 5); } }
-  for (const m of G.mons) {
-    if (m.dead) continue;
-    const tx = Math.floor(m.x / TILE), ty = Math.floor(m.y / TILE);
-    if (!G.explored[tx + ty * g.w]) continue;
-    mx.fillStyle = m.boss ? '#ff2020' : (m.elite ? '#ffb43a' : '#e05050');
-    mx.fillRect(ox + m.x / TILE * s - 1, oy + m.y / TILE * s - 1, m.boss ? 4 : 2, m.boss ? 4 : 2);
-  }
-  for (const c of G.chests) if (!c.opened) { const tx = Math.floor(c.x / TILE), ty = Math.floor(c.y / TILE); if (G.explored[tx + ty * g.w]) { mx.fillStyle = '#ffd23a'; mx.fillRect(ox + tx * s - 1, oy + ty * s - 1, 3, 3); } }
-  mx.fillStyle = '#7dff8a';
-  mx.fillRect(ox + P.x / TILE * s - 2, oy + P.y / TILE * s - 2, 4, 4);
+  const dot = (wx, wy, c, sz) => { mx.fillStyle = c; mx.fillRect(Math.round(ox + wx / TILE * s - sz / 2), Math.round(oy + wy / TILE * s - sz / 2), sz, sz); };
+  const seen = (wx, wy) => { const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE); return tx >= 0 && ty >= 0 && tx < g.w && ty < g.h && G.explored[tx + ty * g.w]; };
+  if (G.door && seen(G.door.x, G.door.y)) dot(G.door.x, G.door.y, '#c47aff', 7);
+  for (const c of G.chests) if (!c.opened && seen(c.x, c.y)) dot(c.x, c.y, '#ffd23a', 5);
+  for (const m of G.mons) if (!m.dead && seen(m.x, m.y)) dot(m.x, m.y, m.boss ? '#ff2020' : (m.elite ? '#ffb43a' : '#e05050'), m.boss ? 8 : 4);
+  dot(P.x, P.y, '#7dff8a', 6);
 }
 
 // ---------- Vòng lặp ----------

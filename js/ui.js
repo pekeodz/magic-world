@@ -37,6 +37,10 @@ const UI = {
     $('look-rl').onclick = () => { this.L.dir = (this.L.dir + 3) % 4; };
     $('look-rr').onclick = () => { this.L.dir = (this.L.dir + 1) % 4; };
     document.querySelectorAll('[data-lanim]').forEach(b => b.onclick = () => { this.L.anim = b.dataset.lanim; document.querySelectorAll('[data-lanim]').forEach(x => x.classList.toggle('on', x === b)); });
+    const mb = $('btn-music');
+    const mlabel = () => { mb.textContent = '♪ Nhạc: ' + (Settings.music > 0 && !G.muted ? 'Bật' : 'Tắt'); };
+    mb.onclick = () => { if (Settings.music > 0 && !G.muted) { Settings.music = 0; } else { Settings.music = Settings.music || 0.45; G.muted = false; } saveSettings(); Music.start(); Music.apply(); mlabel(); };
+    mlabel();
     $('btn-respawn').onclick = () => { $('death').classList.add('hidden'); respawn(); };
     $('mb-inv').onclick = () => this.togglePanel('inv');
     $('mb-skills').onclick = () => this.togglePanel('skills');
@@ -396,7 +400,8 @@ const UI = {
   },
   p_inv() {
     const ch = P.ch;
-    const eq = s => this.itemSlotHTML(ch.equip[s], `data-eq="${s}" title="${SLOT_NAME[s]}"`, this.sel && this.sel.eq === s ? 'sel' : '').replace('</button>', `<span class="lbl">${ch.equip[s] ? '' : SLOT_NAME[s]}</span></button>`);
+    const EIC = { helm: 'helm', armor: 'armor', amulet: 'amulet', weapon: 'weapon', boots: 'boots', ring: 'ring', gloves: 'shield' };
+    const eq = s => this.itemSlotHTML(ch.equip[s], `data-eq="${s}" title="${SLOT_NAME[s]}"`, this.sel && this.sel.eq === s ? 'sel' : '').replace('</button>', ch.equip[s] ? '</button>' : `<img class="lblic" src="assets/ui/ic_${EIC[s]}.png" alt="${SLOT_NAME[s]}"></button>`);
     const bag = [];
     for (let i = 0; i < BAG_SIZE; i++) bag.push(this.itemSlotHTML(ch.bag[i], `data-bag="${i}"`, this.sel && this.sel.bag === i ? 'sel' : ''));
     return `<div class="invgrid">
@@ -669,11 +674,16 @@ const UI = {
     return `<div style="display:flex;flex-direction:column;gap:10px;max-width:340px;margin:0 auto">
       <button class="btn gold" data-m="resume">Tiếp tục chơi</button>
       <button class="btn" data-m="help">Hướng dẫn</button>
-      <button class="btn" data-m="sound">Âm thanh: ${G.muted ? 'Tắt' : 'Bật'}</button>
+      <div class="vol"><label for="vol-music">Nhạc nền</label><input type="range" id="vol-music" min="0" max="100" value="${Math.round(Settings.music * 100)}"><span class="num" id="vm-t">${Math.round(Settings.music * 100)}</span></div>
+      <div class="vol"><label for="vol-sfx">Hiệu ứng</label><input type="range" id="vol-sfx" min="0" max="100" value="${Math.round(Settings.sfx * 100)}"><span class="num" id="vs-t">${Math.round(Settings.sfx * 100)}</span></div>
       <button class="btn" data-m="save">Lưu game</button>
       <button class="btn danger" data-m="quit">Lưu & về màn hình chính</button></div>`;
   },
   b_menu() {
+    const vm = $('vol-music'), vs = $('vol-sfx');
+    vm.oninput = () => { Settings.music = vm.value / 100; $('vm-t').textContent = vm.value; G.muted = false; Music.apply(); if (Settings.music > 0) Music.start(); saveSettings(); };
+    vs.oninput = () => { Settings.sfx = vs.value / 100; $('vs-t').textContent = vs.value; G.muted = false; saveSettings(); };
+    vs.onchange = () => sfx('coin');
     $('pbody').querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
       const m = b.dataset.m;
       if (m === 'resume') this.closePanel();
@@ -851,6 +861,7 @@ function migrateChar(ch) {
 // ---------- Khởi động ----------
 (async function boot() {
   Save.load();
+  Music.init();
   try { Cloud.init(); } catch (e) { console.warn(e); }
   initCanvas();
   initInput();
