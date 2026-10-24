@@ -1296,6 +1296,10 @@ function drawPlayer() {
   if (P.buffs.some(b => b.id === 'h_angel')) { const gr = cx.createRadialGradient(P.x, P.y - 24, 4, P.x, P.y - 24, 40); gr.addColorStop(0, 'rgba(255,240,160,0.5)'); gr.addColorStop(1, 'rgba(255,240,160,0)'); cx.fillStyle = gr; cx.fillRect(P.x - 40, P.y - 64, 80, 80); }
   drawHeroAt(heroSrc(P.ch), P.x, P.y, P.dir, anim, at, dur, { alpha, flash: P.flash, flashColor: 'rgba(255,60,60,0.7)' });
   if (P.status.stun) drawStunStars(P.x, P.y - 56);
+  // tên nhân vật trên đầu (giống NPC)
+  cx.save(); cx.globalAlpha = alpha;
+  pxText(P.ch.name, P.x, P.y - 63, 10, '#ffffff');
+  cx.restore();
 }
 function drawStunStars(x, y) {
   const cx = G.cx;
