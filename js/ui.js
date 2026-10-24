@@ -30,6 +30,13 @@ const UI = {
     $('btn-back').onclick = () => { this.showScreen('title'); this.renderTitle(); };
     $('btn-create').onclick = () => this.doCreate();
     $('cname').addEventListener('keydown', e => { if (e.key === 'Enter') this.doCreate(); });
+    $('look-ok').onclick = () => this.lookConfirm();
+    $('look-back').onclick = () => this.lookCancel();
+    $('look-rand').onclick = () => { Look.randomize(this.L.look, this.L.cls); this.renderLook(); this.lookPreview(); };
+    $('look-def').onclick = () => { const g = Look.cfg(this.L.look).gender; this.L.look = Look.defaultLook(this.L.cls, g); this.renderLook(); this.lookPreview(); };
+    $('look-rl').onclick = () => { this.L.dir = (this.L.dir + 3) % 4; };
+    $('look-rr').onclick = () => { this.L.dir = (this.L.dir + 1) % 4; };
+    document.querySelectorAll('[data-lanim]').forEach(b => b.onclick = () => { this.L.anim = b.dataset.lanim; document.querySelectorAll('[data-lanim]').forEach(x => x.classList.toggle('on', x === b)); });
     $('btn-respawn').onclick = () => { $('death').classList.add('hidden'); respawn(); };
     $('mb-inv').onclick = () => this.togglePanel('inv');
     $('mb-skills').onclick = () => this.togglePanel('skills');
@@ -43,7 +50,7 @@ const UI = {
     this.initTouch();
   },
   showScreen(name) {
-    for (const s of ['loading', 'title', 'create']) $('screen-' + s).classList.toggle('hidden', s !== name);
+    for (const s of ['loading', 'title', 'create', 'look']) $('screen-' + s).classList.toggle('hidden', s !== name);
   },
 
   // ---------- Màn hình tiêu đề ----------
@@ -58,7 +65,7 @@ const UI = {
           <div><div class="nm">${esc(c.name)}</div><div class="sub">${CLASSES[c.cls].name} · Cấp ${c.lvl} · Tầng cao nhất ${c.maxFloor}</div></div>
           <div style="display:flex;gap:6px"><button class="btn gold small" data-play="${i}">Chơi</button><button class="btn danger small" data-del="${i}">Xóa</button></div>
         </div>`).join('');
-      list.querySelectorAll('canvas').forEach(cv => drawHeroThumb(cv, cv.dataset.cls, 0));
+      list.querySelectorAll('canvas').forEach((cv, i) => drawHeroThumb(cv, chars[i], 0));
       list.querySelectorAll('[data-play]').forEach(b => b.onclick = e => { e.stopPropagation(); this.play(+b.dataset.play); });
       list.querySelectorAll('.charrow').forEach(r => r.ondblclick = () => this.play(+r.dataset.i));
       list.querySelectorAll('[data-del]').forEach(b => b.onclick = e => {
@@ -118,10 +125,104 @@ const UI = {
     let name = $('cname').value.trim();
     if (!name) { $('cname').focus(); this.toast('Hãy đặt tên cho nhân vật'); return; }
     if (Save.data.chars.length >= 6) { this.toast('Đã đủ 6 nhân vật'); return; }
+    if (Look.ok) { this.openLook({ mode: 'new', cls: k, name: name.slice(0, 16) }); return; }
     const ch = newChar(name.slice(0, 16), k);
     Save.data.chars.push(ch); Save.store();
     $('cname').value = '';
     this.play(Save.data.chars.length - 1);
+  },
+
+  // ---------- Ngoại hình ----------
+  openLook(st) {
+    const cls = st.ch ? st.ch.cls : st.cls;
+    const look = st.ch && st.ch.look ? JSON.parse(JSON.stringify(st.ch.look)) : Look.defaultLook(cls, st.gender || 'male');
+    this.L = Object.assign({ dir: DIR.DOWN, anim: 'walk', tab: 'body', atlas: null, tok: 0 }, st, { cls, look });
+    if (st.mode === 'edit') { this.showHUD(false); $('touch').classList.add('hidden'); G.paused = true; }
+    this.showScreen('look');
+    $('look-ok').textContent = st.mode === 'new' ? 'Bắt đầu hành trình' : 'Lưu ngoại hình';
+    $('look-title').textContent = st.mode === 'new' ? `Ngoại hình · ${st.name}` : 'Đổi ngoại hình';
+    this.renderLook();
+    this.lookPreview();
+  },
+  lookTabs: { body: ['Cơ thể', ['race', 'cfg', 'skin', 'eyes', 'ears', 'nose', 'horns', 'tail', 'wings']], hair: ['Tóc', ['hair', 'hairadd', 'facial']],
+    outfit: ['Trang phục', ['shirt', 'jacket', 'pants', 'shoes', 'belt', 'gloves', 'back', 'hat', 'glasses', 'mask']], weapon: ['Vũ khí', ['mainhand', 'offhand']] },
+  renderLook() {
+    const L = this.L, look = L.look;
+    $('looktabs').innerHTML = Object.entries(this.lookTabs).map(([k, v]) => `<button class="btn small ${L.tab === k ? 'on' : ''}" data-ltab="${k}">${v[0]}</button>`).join('');
+    const sw = (list, cur, attr) => list.length ? `<div class="swatches">${list.map(id => { const c = Look.cat.colormaps[id]; return c ? `<button class="sw ${cur === id ? 'on' : ''}" style="background:${c.c}" title="${esc(c.n)}" aria-label="${esc(c.n)}" ${attr}="${id}"></button>` : ''; }).join('')}</div>` : '';
+    const rows = [];
+    for (const key of this.lookTabs[L.tab][1]) {
+      if (key === 'race') { rows.push(`<div class="lrow"><label for="l-race">Chủng tộc</label><select id="l-race">${Look.cat.races.map(r => `<option value="${r.id}" ${r.id === look.race ? 'selected' : ''}>${r.name}</option>`).join('')}</select></div>`); continue; }
+      if (key === 'cfg') { rows.push(`<div class="lrow"><label for="l-cfg">Giới tính · Dáng</label><select id="l-cfg">${Look.race(look).configs.map(c => `<option value="${c.id}" ${c.id === look.cfg ? 'selected' : ''}>${c.name}</option>`).join('')}</select></div>`); continue; }
+      if (key === 'skin') { rows.push(`<div class="lrow"><label>Màu da</label>${sw(Look.colors('body', look.slots.body.id), look.skin, 'data-skin')}</div>`); continue; }
+      const opts = Look.options(key, look, L.cls);
+      if (opts.length <= 1 && !['mainhand'].includes(key)) continue;
+      const cur = (look.slots[key] || { id: 'none' }).id;
+      let col = '';
+      if (cur !== 'none') {
+        if (key === 'hair') col = sw(Look.colors('hair', cur), look.hairC, 'data-hairc') + sw(Look.colors('hair', cur, 's'), look.hairC2 || Look.colors('hair', cur, 's')[0], 'data-hairc2');
+        else if (!SKIN_SLOTS.includes(key) && !HAIR_SLOTS.includes(key)) {
+          const s = look.slots[key];
+          col = sw(Look.colors(key, cur), s.p || Look.colors(key, cur)[0], `data-c="${key}" data-cp`) + sw(Look.colors(key, cur, 's'), s.s || (Look.colors(key, cur, 's').includes(s.p) ? s.p : Look.colors(key, cur, 's')[0]), `data-c="${key}" data-cs`);
+        }
+      }
+      rows.push(`<div class="lrow"><label for="l-${key}">${LOOK_SLOT_NAME[key]}</label>
+        <div class="lsel"><button class="btn small" data-step="${key}" data-d="-1" aria-label="Trước">◀</button>
+        <select id="l-${key}" data-slot="${key}">${opts.map(id => `<option value="${id}" ${id === cur ? 'selected' : ''}>${id === 'none' ? 'Không' : esc(lookName(Look.item(key, id).n))}</option>`).join('')}</select>
+        <button class="btn small" data-step="${key}" data-d="1" aria-label="Sau">▶</button></div>${col}</div>`);
+    }
+    $('lookrows').innerHTML = rows.join('');
+    const root = $('screen-look');
+    root.querySelectorAll('[data-ltab]').forEach(b => b.onclick = () => { L.tab = b.dataset.ltab; this.renderLook(); });
+    const changed = () => { Look.validate(look, L.cls); this.renderLook(); this.lookPreview(); };
+    const rs = $('l-race'); if (rs) rs.onchange = () => { look.race = rs.value; look.cfg = Look.race(look).configs[0].id; changed(); };
+    const cs = $('l-cfg'); if (cs) cs.onchange = () => { look.cfg = cs.value; changed(); };
+    root.querySelectorAll('select[data-slot]').forEach(sel => sel.onchange = () => { look.slots[sel.dataset.slot] = { id: sel.value }; changed(); });
+    root.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
+      const k = b.dataset.step, opts = Look.options(k, look, L.cls), i = opts.indexOf((look.slots[k] || {}).id);
+      look.slots[k] = { id: opts[(i + +b.dataset.d + opts.length) % opts.length] }; changed();
+    });
+    root.querySelectorAll('[data-skin]').forEach(b => b.onclick = () => { look.skin = b.dataset.skin; changed(); });
+    root.querySelectorAll('[data-hairc]').forEach(b => b.onclick = () => { look.hairC = b.dataset.hairc; changed(); });
+    root.querySelectorAll('[data-hairc2]').forEach(b => b.onclick = () => { look.hairC2 = b.dataset.hairc2; changed(); });
+    root.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { look.slots[b.dataset.c].p = b.dataset.cp; changed(); });
+    root.querySelectorAll('[data-cs]').forEach(b => b.onclick = () => { look.slots[b.dataset.c].s = b.dataset.cs; changed(); });
+    root.querySelectorAll('[data-eyes]').forEach(b => b.onclick = () => { look.slots.eyes.p = b.dataset.eyes; changed(); });
+  },
+  lookPreview() {
+    const L = this.L, tok = ++L.tok;
+    $('lookstatus').textContent = 'Đang ghép...';
+    clearTimeout(this._lp);
+    this._lp = setTimeout(async () => {
+      const a = await Look.buildAtlas(L.look).catch(e => { console.warn(e); return null; });
+      if (tok !== L.tok) return;
+      L.atlas = a; $('lookstatus').textContent = a ? '' : 'Không ghép được, thử lựa chọn khác';
+    }, 60);
+  },
+  lookFrame() {
+    if (!this.L || $('screen-look').classList.contains('hidden')) return;
+    drawHeroPreview($('lookcv'), this.L.atlas, this.L.dir, this.L.anim, performance.now() / 1000);
+  },
+  lookConfirm() {
+    const L = this.L;
+    if (L.mode === 'new') {
+      if (Save.data.chars.length >= 6) { this.toast('Đã đủ 6 nhân vật'); return; }
+      const ch = newChar(L.name, L.cls);
+      ch.look = L.look;
+      Save.data.chars.push(ch); Save.store();
+      $('cname').value = '';
+      this.L = null;
+      this.play(Save.data.chars.length - 1);
+    } else {
+      L.ch.look = L.look; Look.ensure(L.ch); saveGame();
+      this.L = null; this.showScreen(null); this.showHUD(true); G.paused = false;
+      this.toast('Đã lưu ngoại hình mới');
+    }
+  },
+  lookCancel() {
+    const L = this.L; this.L = null;
+    if (L && L.mode === 'edit') { this.showScreen(null); this.showHUD(true); G.paused = false; }
+    else this.showScreen('create');
   },
 
   // ---------- HUD ----------
@@ -221,7 +322,7 @@ const UI = {
     document.querySelectorAll('#log div').forEach(d => { if (now - d.dataset.t > 5000) d.style.opacity = 0; if (now - d.dataset.t > 6000) d.remove(); });
     // preview nhân vật trong túi đồ
     const pc = document.querySelector('.paper canvas');
-    if (pc) drawHeroThumb(pc, ch.cls, G.t, true);
+    if (pc) drawHeroThumb(pc, ch, G.t, true);
   },
   log(html) {
     const el = document.createElement('div');
@@ -435,12 +536,14 @@ const UI = {
       </div><div>
       <div class="sec-title">Chỉ số chi tiết</div>
       <div class="statlist">${rows.map(r => `<span>${r[0]}</span><span>${r[1]}</span>`).join('')}</div>
+      ${Look.ok ? '<div style="margin-top:12px"><button class="btn small" id="btn-look">Đổi ngoại hình (trong thị trấn)</button></div>' : ''}
       <div class="sec-title">Hành trình</div>
       <div class="statlist"><span>Tầng sâu nhất</span><span>${ch.maxFloor}</span><span>Quái đã hạ</span><span>${fmt(ch.kills)}</span><span>Boss đã hạ</span><span>${ch.bossKills}</span><span>Số lần gục</span><span>${ch.deaths}</span><span>Thời gian chơi</span><span>${Math.floor(t / 60)}g ${t % 60}p</span></div>
     </div></div>`;
   },
   b_char() {
-    drawHeroThumb($('charcv'), P.ch.cls, 0);
+    drawHeroThumb($('charcv'), P.ch, 0);
+    const lb = $('btn-look'); if (lb) lb.onclick = () => { if (!G.world.town) { this.toast('Chỉ đổi ngoại hình được trong thị trấn'); return; } this.closePanel(); this.openLook({ mode: 'edit', ch: P.ch }); };
     const add = (a, n) => { n = Math.min(n, P.ch.freeAttr); if (n <= 0) return; P.ch.attrs[a] += n; P.ch.freeAttr -= n; const r = P.hp / P.st.maxHp; recalc(false); P.hp = r * P.st.maxHp; sfx('ui'); this.renderPanel(); };
     $('pbody').querySelectorAll('[data-attr]').forEach(b => b.onclick = () => add(b.dataset.attr, 1));
     $('pbody').querySelectorAll('[data-attr5]').forEach(b => b.onclick = () => add(b.dataset.attr5, 5));
@@ -681,15 +784,33 @@ function itemCardHTML(it, cmp) {
     ${cmpHTML}
     <div class="hint" style="text-align:left">Giá bán ${fmt(sellValue(it))} vàng</div></div>`;
 }
-function drawHeroThumb(cv, cls, t, walk) {
+function drawHeroThumb(cv, who, t, walk) {
   if (!cv) return;
   const cx = cv.getContext('2d');
   cx.imageSmoothingEnabled = false;
+  const ch = typeof who === 'string' ? null : who;
+  const src = ch ? heroSrc(ch) : { img: IMG['hero_' + who] };
+  if (ch && ch.look && Look.ok && !Look.atlas[ch.id] && !cv._wait) { cv._wait = true; Look.ensure(ch).then(() => { cv._wait = false; drawHeroThumb(cv, ch, t, walk); }); }
   cx.clearRect(0, 0, cv.width, cv.height);
   const A = walk ? HERO_ANIM.walk : HERO_ANIM.idle;
   const f = A.frames[Math.floor(t * (walk ? 8 : 2.5)) % A.frames.length];
-  const img = IMG['hero_' + cls];
-  if (img && img.complete) cx.drawImage(img, f * 64, (A.row + DIR.DOWN) * 64, 64, 64, 0, 0, cv.width, cv.height);
+  const img = src.img;
+  if (img && (!(img instanceof HTMLImageElement) || img.complete)) cx.drawImage(img, f * 64, (A.row + DIR.DOWN) * 64, 64, 64, 0, 0, cv.width, cv.height);
+}
+// vẽ nhân vật lên canvas preview 192x192 (hỗ trợ khung vũ khí lớn)
+function drawHeroPreview(cv, src, dir, animName, t) {
+  const cx = cv.getContext('2d'); cx.imageSmoothingEnabled = false;
+  cx.clearRect(0, 0, cv.width, cv.height);
+  if (!src || !src.img) return;
+  const A = HERO_ANIM[animName] || HERO_ANIM.idle;
+  let idx;
+  if (animName === 'walk') idx = Math.floor(t * 9) % A.frames.length;
+  else if (animName === 'idle') idx = Math.floor(t * 2.5) % A.frames.length;
+  else { const cyc = (t % 1.1) / 0.75; idx = Math.min(A.frames.length - 1, Math.floor(Math.min(1, cyc) * A.frames.length)); }
+  const col = A.frames[idx];
+  cx.fillStyle = 'rgba(0,0,0,0.35)'; cx.beginPath(); cx.ellipse(96, 123, 16, 6, 0, 0, 6.283); cx.fill();
+  if (src.big && src.bigHas && src.bigHas[animName]) { cx.drawImage(src.big, col * 192, ((animName === 'slash' ? 0 : 4) + dir) * 192, 192, 192, 0, 0, 192, 192); return; }
+  cx.drawImage(src.img, col * 64, (A.row + (A.noDir ? 0 : dir)) * 64, 64, 64, 64, 64, 64, 64);
 }
 // HUD vẽ từ Hud.png (khung rỗng + khung đầy, cắt theo tỉ lệ)
 const HUDC = { x: 28, yE: 172, yF: 13, w: 307, h: 150, bars: { hp: { x0: 128, x1: 290, y: 15, h: 20 }, xp: { x0: 143, x1: 306, y: 60, h: 20 }, mp: { x0: 128, x1: 290, y: 105, h: 20 } } };
@@ -712,8 +833,8 @@ function drawHudFrame() {
   const g = cx.createRadialGradient(81, 60, 5, 81, 75, 55);
   g.addColorStop(0, CLASSES[ch.cls].color + '66'); g.addColorStop(1, '#100c14');
   cx.fillStyle = g; cx.fillRect(20, 20, 130, 130);
-  const hi = IMG['hero_' + ch.cls];
-  if (hi && hi.complete) cx.drawImage(hi, 0, (HERO_ANIM.idle.row + DIR.DOWN) * 64 + 8, 64, 34, 81 - 64, 32, 128, 68);
+  const hi = heroSrc(ch).img;
+  if (hi && (!(hi instanceof HTMLImageElement) || hi.complete)) cx.drawImage(hi, 0, (HERO_ANIM.idle.row + DIR.DOWN) * 64 + 8, 64, 34, 81 - 64, 32, 128, 68);
   cx.restore();
   const sc = cv.clientWidth / HUDC.w;
   const set = (id, k, txt) => { const b = HUDC.bars[k], el = $(id); el.style.left = b.x0 * sc + 'px'; el.style.width = (b.x1 - b.x0) * sc + 'px'; el.style.top = (b.y + 3) * sc + 'px'; el.textContent = txt; };
@@ -735,11 +856,12 @@ function migrateChar(ch) {
   initInput();
   UI.init();
   requestAnimationFrame(loop);
-  await loadAssets(p => { $('loadfill').style.width = Math.round(p * 100) + '%'; });
+  await Promise.all([loadAssets(p => { $('loadfill').style.width = Math.round(p * 100) + '%'; }), Look.init()]);
   // animate hero trên màn hình tạo nhân vật
   setInterval(() => {
+    UI.lookFrame();
     if (!$('screen-create').classList.contains('hidden')) UI.heroCanvases.forEach(cv => drawHeroThumb(cv, cv.dataset.cls, performance.now() / 1000, true));
-  }, 100);
+  }, 66);
   UI.showScreen('title');
   UI.renderTitle();
 })();

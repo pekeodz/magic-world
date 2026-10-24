@@ -108,6 +108,7 @@ function startGame(ch) {
     status: {}, flash: 0, invuln: 0, dash: null, potCd: { hp: 0, mp: 0 }, portal: null, regenAcc: 0, hurtT: 0,
   };
   recalc(true);
+  Look.ensure(ch);
   G.running = true; G.dead = false; G.paused = false;
   refreshShop();
   enterTown();
@@ -1190,7 +1191,7 @@ function updatePrompt() {
 // ---------- Render ----------
 function drawFrame(img, sx, sy, sw, sh, dx, dy, dw, dh, o = {}) {
   const cx = G.cx;
-  if (!img || !img.complete || !img.naturalWidth) return;
+  if (!img || (img instanceof HTMLImageElement && (!img.complete || !img.naturalWidth))) return;
   cx.save();
   if (o.alpha != null) cx.globalAlpha = o.alpha;
   if (o.flip) { cx.translate(dx + dw, dy); cx.scale(-1, 1); dx = 0; dy = 0; }
@@ -1213,15 +1214,20 @@ function shadow(x, y, rw, rh, a = 0.35) {
   cx.fillStyle = `rgba(0,0,0,${a})`;
   cx.beginPath(); cx.ellipse(x, y, rw, rh, 0, 0, Math.PI * 2); cx.fill();
 }
-function drawHeroAt(cls, x, y, dir, animName, animT, animDur, o = {}) {
+function drawHeroAt(src, x, y, dir, animName, animT, animDur, o = {}) {
   const A = HERO_ANIM[animName] || HERO_ANIM.idle;
   let idx;
   if (animName === 'walk') idx = Math.floor(animT * 11) % A.frames.length;
   else if (animName === 'idle') idx = Math.floor(animT * 2.5) % A.frames.length;
   else idx = Math.min(A.frames.length - 1, Math.floor(animT / Math.max(0.01, animDur) * A.frames.length));
-  const row = A.row + (A.noDir ? 0 : dir);
   const col = A.frames[idx];
-  drawFrame(IMG['hero_' + cls], col * 64, row * 64, 64, 64, Math.round(x - 32), Math.round(y - 61), 64, 64, o);
+  if (src.big && src.bigHas[animName]) {
+    const row = (animName === 'slash' ? 0 : 4) + dir;
+    drawFrame(src.big, col * 192, row * 192, 192, 192, Math.round(x - 96), Math.round(y - 124), 192, 192, o);
+    return;
+  }
+  const row = A.row + (A.noDir ? 0 : dir);
+  drawFrame(src.img, col * 64, row * 64, 64, 64, Math.round(x - 32), Math.round(y - 60), 64, 64, o);
 }
 function drawPlayer() {
   const cx = G.cx;
@@ -1233,7 +1239,7 @@ function drawPlayer() {
   const alpha = P.st.stealth ? 0.35 : 1;
   if (P.buffs.some(b => b.id === 'k_wall')) { cx.strokeStyle = `rgba(159,193,255,${0.4 + 0.2 * Math.sin(G.t * 8)})`; cx.lineWidth = 2; cx.beginPath(); cx.ellipse(P.x, P.y - 22, 20, 28, 0, 0, 6.283); cx.stroke(); }
   if (P.buffs.some(b => b.id === 'h_angel')) { const gr = cx.createRadialGradient(P.x, P.y - 24, 4, P.x, P.y - 24, 40); gr.addColorStop(0, 'rgba(255,240,160,0.5)'); gr.addColorStop(1, 'rgba(255,240,160,0)'); cx.fillStyle = gr; cx.fillRect(P.x - 40, P.y - 64, 80, 80); }
-  drawHeroAt(P.ch.cls, P.x, P.y, P.dir, anim, at, dur, { alpha, flash: P.flash, flashColor: 'rgba(255,60,60,0.7)' });
+  drawHeroAt(heroSrc(P.ch), P.x, P.y, P.dir, anim, at, dur, { alpha, flash: P.flash, flashColor: 'rgba(255,60,60,0.7)' });
   if (P.status.stun) drawStunStars(P.x, P.y - 56);
 }
 function drawStunStars(x, y) {
