@@ -824,28 +824,58 @@ function drawHeroPreview(cv, src, dir, animName, t) {
 }
 // HUD vẽ từ Hud.png (khung rỗng + khung đầy, cắt theo tỉ lệ)
 const HUDC = { x: 28, yE: 172, yF: 13, w: 307, h: 150, bars: { hp: { x0: 128, x1: 290, y: 15, h: 20 }, xp: { x0: 143, x1: 306, y: 60, h: 20 }, mp: { x0: 128, x1: 290, y: 105, h: 20 } } };
+// khung HUD rỗng với phần nền xám bên trong vòng tròn được làm trong suốt (chỉ giữ viền vàng + ngọc)
+let _hudFrameCv = null;
+function hudEmptyFrame(img) {
+  if (_hudFrameCv) return _hudFrameCv;
+  const c = document.createElement('canvas'); c.width = HUDC.w; c.height = HUDC.h;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, HUDC.x, HUDC.yE, HUDC.w, HUDC.h, 0, 0, HUDC.w, HUDC.h);
+  const id = x.getImageData(0, 0, c.width, c.height), d = id.data, W = c.width, H = c.height;
+  const CX = 72, CY = 69, R2 = 61 * 61;
+  const ok = i => { const r = d[i], g = d[i + 1], b = d[i + 2]; return d[i + 3] > 0 && Math.max(r, g, b) - Math.min(r, g, b) < 12 && Math.max(r, g, b) < 120; };
+  const seen = new Uint8Array(W * H), st = [CX + CY * W]; seen[st[0]] = 1;
+  while (st.length) {
+    const p = st.pop(), px = p % W, py = (p / W) | 0;
+    d[p * 4 + 3] = 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = px + dx, ny = py + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const q = nx + ny * W;
+      if (seen[q] || (nx - CX) ** 2 + (ny - CY) ** 2 > R2 || !ok(q * 4)) continue;
+      seen[q] = 1; st.push(q);
+    }
+  }
+  // giữ lại đường viền đen 1px sát vòng vàng
+  const gold = q => d[q * 4 + 3] > 0 && !seen[q] && Math.max(d[q * 4], d[q * 4 + 1], d[q * 4 + 2]) - Math.min(d[q * 4], d[q * 4 + 1], d[q * 4 + 2]) >= 12;
+  for (let q = 0; q < W * H; q++) if (seen[q]) { const qx = q % W;
+    if ((qx > 0 && gold(q - 1)) || (qx < W - 1 && gold(q + 1)) || gold(q - W) || gold(q + W)) d[q * 4 + 3] = 255; }
+  x.putImageData(id, 0, 0);
+  return (_hudFrameCv = c);
+}
 function drawHudFrame() {
   const cv = $('hudcv'), cx = cv.getContext('2d'), img = IMG.hud;
   if (!img || !img.complete) return;
   cx.imageSmoothingEnabled = false;
   cx.clearRect(0, 0, cv.width, cv.height);
-  cx.drawImage(img, HUDC.x, HUDC.yE, HUDC.w, HUDC.h, 0, 0, HUDC.w, HUDC.h);
+  const frame = hudEmptyFrame(img);
+  cx.drawImage(frame, 0, 0);
   const ch = P.ch, st = P.st;
+  // chân dung: tâm vòng vàng trong Hud.png là (72, 69), bán kính trong ~56
+  const PX = 72, PY = 69, PR = 59;
+  cx.save();
+  cx.beginPath(); cx.arc(PX, PY, PR, 0, Math.PI * 2); cx.clip();
+  const hi = heroSrc(ch).img;
+  if (hi && (!(hi instanceof HTMLImageElement) || hi.complete)) cx.drawImage(hi, 0, (HERO_ANIM.idle.row + DIR.DOWN) * 64 + 8, 64, 34, PX - 64, PY - 43, 128, 68);
+  cx.restore();
+  // vẽ lại 3 viên ngọc + viền phải để không bị chân dung đè lên
+  cx.drawImage(frame, 96, 0, 48, HUDC.h, 96, 0, 48, HUDC.h);
   const ratios = { hp: P.hp / st.maxHp, xp: ch.lvl >= MAX_LEVEL ? 1 : ch.xp / xpNeed(ch.lvl), mp: P.mp / st.maxMp };
   for (const k of ['hp', 'xp', 'mp']) {
     const b = HUDC.bars[k], r = clamp(ratios[k], 0, 1);
     const w = (b.x1 - b.x0) * r;
     if (w > 0) cx.drawImage(img, HUDC.x + b.x0, HUDC.yF + b.y, w, b.h, b.x0, b.y, w, b.h);
   }
-  // chân dung
-  cx.save();
-  cx.beginPath(); cx.arc(81, 75, 50, 0, Math.PI * 2); cx.clip();
-  const g = cx.createRadialGradient(81, 60, 5, 81, 75, 55);
-  g.addColorStop(0, CLASSES[ch.cls].color + '66'); g.addColorStop(1, '#100c14');
-  cx.fillStyle = g; cx.fillRect(20, 20, 130, 130);
-  const hi = heroSrc(ch).img;
-  if (hi && (!(hi instanceof HTMLImageElement) || hi.complete)) cx.drawImage(hi, 0, (HERO_ANIM.idle.row + DIR.DOWN) * 64 + 8, 64, 34, 81 - 64, 32, 128, 68);
-  cx.restore();
   const sc = cv.clientWidth / HUDC.w;
   const set = (id, k, txt) => { const b = HUDC.bars[k], el = $(id); el.style.left = b.x0 * sc + 'px'; el.style.width = (b.x1 - b.x0) * sc + 'px'; el.style.top = (b.y + 3) * sc + 'px'; el.textContent = txt; };
   set('bt-hp', 'hp', `${Math.ceil(P.hp)} / ${st.maxHp}`);

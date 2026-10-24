@@ -127,7 +127,7 @@ button { font-family: var(--f-body); }
 #hud > * { pointer-events: auto; }
 #hudframe { position: absolute; left: max(8px, env(safe-area-inset-left, 0px)); top: calc(8px + env(safe-area-inset-top, 0px)); width: 300px; height: 147px; pointer-events: none; }
 #hudframe canvas { width: 100%; height: 100%; image-rendering: pixelated; }
-#hudframe .lv { position: absolute; left: 47px; top: 92px; width: 70px; text-align: center; font-family: var(--f-num); font-size: 10px; color: var(--gold); text-shadow: 0 1px 0 #000; }
+#hudframe .lv { position: absolute; left: 35px; top: 96px; width: 70px; text-align: center; font-family: var(--f-num); font-size: 10px; color: var(--gold); text-shadow: 0 1px 0 #000; }
 #hudframe .bt { position: absolute; font-family: var(--f-num); font-size: 10px; color: #fff; text-shadow: 0 1px 1px #000; text-align: center; }
 #hudname { position: absolute; left: calc(max(8px, env(safe-area-inset-left, 0px)) + 120px); top: calc(4px + env(safe-area-inset-top, 0px)); font-weight: 800; font-size: 20px; text-shadow: 0 1px 2px #000; pointer-events: none; }
 #buffs { position: absolute; left: calc(max(8px, env(safe-area-inset-left, 0px)) + 118px); top: calc(150px + env(safe-area-inset-top, 0px)); display: flex; gap: 4px; pointer-events: none; }
@@ -262,7 +262,7 @@ kbd { font-family: var(--f-num); font-size: 10px; border: 1px solid var(--bronze
   .cdetail { grid-template-columns: 1fr; }
   .invgrid, .shopgrid, .charcols { grid-template-columns: 1fr; }
   #hudframe { width: 200px; height: 98px; }
-  #hudframe .lv { left: 31px; top: 60px; width: 46px; font-size: 10px; }
+  #hudframe .lv { left: 24px; top: 62px; width: 46px; font-size: 10px; }
   #hudname { left: calc(max(8px, env(safe-area-inset-left, 0px)) + 80px); font-size: 10px; }
   #buffs { top: calc(100px + env(safe-area-inset-top, 0px)); left: 80px; }
   #minimap { width: 120px; height: 90px; }
@@ -367,7 +367,6 @@ kbd { font-family: var(--f-px); font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -429,7 +428,7 @@ kbd { font-family: var(--f-px); font-size: 10px; }
 </section>
 
 <div id="hud" class="hidden">
-  <div id="hudframe"><canvas id="hudcv" width="307" height="150"></canvas><div class="lv" id="hudlv">Lv 1</div><div class="bt" id="bt-hp"></div><div class="bt" id="bt-xp"></div><div class="bt" id="bt-mp"></div></div>
+  <div id="hudframe"><canvas id="hudcv" width="307" height="150"></canvas><div class="lv" id="hudlv" style="display:none">Lv 1</div><div class="bt" id="bt-hp"></div><div class="bt" id="bt-xp"></div><div class="bt" id="bt-mp"></div></div>
   <div id="hudname"></div>
   <div id="buffs"></div>
   <div id="topright">
